@@ -1,24 +1,39 @@
 "use strict";
 
 const consoleBoard = (function() {
-    const cells = [" ", " ", " ", " ", " ", " ", " ", " ", " "];
+    const cells = [[" ", " ", " "], [" ", " ", " "], [" ", " ", " "]];
 
     const canMarkCell = (cellIdx) => {
-        return cellIdx >= 0 && cellIdx <= 8 && cells[cellIdx] == " ";
+        return cellIdx >= 0 && cellIdx <= 8 && cells[Math.floor(cellIdx / 3)][cellIdx % 3] == " ";
     }
 
     const markCell = (cellIdx, cellSymbol) => {
-        cells[cellIdx] = cellSymbol;
+        cells[Math.floor(cellIdx / 3)][cellIdx % 3] = cellSymbol;
     };
 
     const getCells = () => cells;
 
-    const areAllCellsMarked = () => {
-        let availableCellsExist = false;
-        for (let i = 0; i < 9; i++) {
-            availableCellsExist = availableCellsExist || (cells[i] == " ");
+    const getEmptyCells = () => {
+        let emptyCells = [];
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                if (cells[r][c] == " ") {
+                    emptyCells.push(cells[r][c]);
+                }
+            }
         }
-        return availableCellsExist;
+        return emptyCells;
+    };
+    
+    const areAllCellsMarked = () => {
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                if (cells[r][c] == " ") {
+                    return false;
+                }
+            }
+        }
+        return true; 
     }
 
     const checkWinCondition = (cellIdx, cellSymbol) => {
@@ -27,31 +42,32 @@ const consoleBoard = (function() {
         let didWin = false;
 
         let horizontal = true;
-        for (let i = r * 3; i < (r + 1) * 3; i++) {
-            horizontal = horizontal && (cells[i] == cellSymbol);
+        for (let ci = 0; ci < 3; ci++) {
+            horizontal = horizontal && (cells[r][ci] == cellSymbol);
         }
-        didWin = didWin || horizontal;
 
         let vertical = true;
-        for (let i = c; i < 9 + c; i += 3) {
-            vertical = vertical && (cells[i] == cellSymbol);
-        }
-        didWin = didWin || vertical;
-
-        if (c == r || c == 1 && r == 1) {
-            didWin = didWin || (cells[0] == cellSymbol) && (cells[4] == cellSymbol) && (cells[8] == cellSymbol);
-        }
-        if (c == r - 2 || c - 2 == r || c == 1 && r == 1) {
-            didWin = didWin || (cells[2] == cellSymbol) && (cells[4] == cellSymbol) && (cells[6] == cellSymbol);
+        for (let ri = 0; ri < 3; ri++) {
+            vertical = vertical && (cells[ri][c] == cellSymbol);
         }
 
-        return didWin;
+        let diagonalLeft = true;
+        let diagonalRight = true;
+        for (let ri = 0, ci = 0; ri < 3, ci < 3; ri++, ci++) {
+            diagonalLeft = diagonalLeft && (cells[ri][ci] == cellSymbol);
+        }
+        for (let ri = 0, ci = 2; ri < 3, ci >= 0; ri++, ci--) {
+            diagonalRight = diagonalRight && (cells[ri][ci] == cellSymbol);
+        }
+
+        return didWin || horizontal || vertical || diagonalLeft || diagonalRight;
     };
 
     return {
         markCell,
         canMarkCell,
         getCells,
+        getEmptyCells,
         checkWinCondition,
         areAllCellsMarked,
     }
@@ -65,14 +81,12 @@ const consoleRenderer = (function() {
         for (let r = 0; r < 3; r++) {
             resultingString = resultingString.concat("| ")
             for (let c = 0; c < 3; c++) {
-                let symbol = cells[r * 3 + c];
-                resultingString = resultingString.concat(symbol, " | ");
+                resultingString = resultingString.concat(cells[r][c], " | ");
             }
             resultingString = resultingString.concat("\n");
         }
         resultingString = resultingString.concat("-------------");
 
-        console.log({resultingString});
         console.log(resultingString);
     }
 
@@ -87,8 +101,8 @@ const game = (function(renderer, board) {
     
     const playGame = (player1, player2) => {
         let didWin;
-        console.log(board.areAllCellsMarked());
-        while (board.areAllCellsMarked()) {
+        console.log(!board.areAllCellsMarked());
+        while (!board.areAllCellsMarked()) {
             let currentPlayer = turn == 0 ? player1 : player2;
             didWin = playRound(currentPlayer);
 
