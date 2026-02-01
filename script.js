@@ -178,184 +178,157 @@ function consolePlayer(pType, board, cellSymbol) {
     }
 
     let opponentSymbol = null;
-
     const computerPlay = () => {
-        const determinedCellIndex = (() => {
+        let cells = board.getCells();
+        let emptyCellIndexes = board.getEmptyCellIndexes();
 
-            let cells = board.getCells();
-            let emptyCellIndexes = board.getEmptyCellIndexes();
-            // console.log(emptyCellIndexes);
-            
+        // can be null when the computer plays in the first round
+        if (opponentSymbol === null) {
+            opponentSymbol = board.getOpponentSymbol(cellSymbol);          
+        }
+
+        const hasTwoInARow = (cellIdx, cellSymbol) => {
+            board.markCell(cellIdx, cellSymbol);
+            if (board.checkWinCondition(cellIdx, cellSymbol)) {
+                board.unmarkCell(cellIdx);
+                return cellIdx;
+            }
+            board.unmarkCell(cellIdx);
+            return -1;
+        }
+
+        const findFork = (cellIdx, cellSymbol) => {
+            board.markCell(cellIdx, cellSymbol);
+            let log = "";
+
+            // row
+            let cellRow = Math.floor(cellIdx / 3);
+            let cellColumn = cellIdx % 3;
+            let countMatches = 0;
+            let countEmpty = 0;
+            let countOwn = 0;
+            for (let c = 0; c < 3; c++) {
+                if (cells[cellRow][c] == cellSymbol) {
+                    countOwn++;
+                } else if (cells[cellRow][c] == " ") {
+                    countEmpty++;
+                }
+            }
+            if (countEmpty == 1 && countOwn == 2) {
+                countMatches++;
+                log += "r ";
+            }
+            countOwn = 0;
+            countEmpty = 0;
+
+            // column
+            for (let r = 0; r < 3; r++) {
+                if (cells[r][cellColumn] == cellSymbol) {
+                    countOwn++;
+                } else if (cells[r][cellColumn] == " ") {
+                    countEmpty++;
+                }
+            }
+            if (countEmpty == 1 && countOwn == 2) {
+                log += "c ";
+                countMatches++;
+            }
+            countOwn = 0;
+            countEmpty = 0;
+
+            // diagonal left
+            if (cellRow == cellColumn) {
+                for (let r = 0, c = 0; r < 3, c < 3; r++, c++) { 
+                    if (cells[r][c] == cellSymbol) {
+                        countOwn++;
+                    } else if (cells[r][c] == " ") {
+                        countEmpty++;
+                    }
+                }
+                if (countEmpty == 1 && countOwn == 2) {
+                    log += "dl ";
+                    countMatches++;
+                }
+                countOwn = 0;
+                countEmpty = 0;
+            }
+
+            // diagonal right
+            if (Math.abs(cellRow - cellColumn) || cellRow == cellColumn) {
+                for (let r = 0, c = 2; r < 3, c >= 0; r++, c--) { 
+                    if (cells[r][c] == cellSymbol) {
+                        countOwn++;
+                    } else if (cells[r][c] == " ") {
+                        countEmpty++;
+                    }
+                }
+                if (countEmpty == 1 && countOwn == 2) {
+                    log += "dr ";
+                    countMatches++;
+                }
+                countOwn = 0;
+                countEmpty = 0;
+            }
+
+            // console.log({cellIdx, countMatches, log});
+
+            board.unmarkCell(cellIdx);
+            return countMatches >= 2;
+        };
+
+        const determinedCellIndex = (() => {            
             // 1. Win: If the player has two in a row, they can place a third to get three in a row.
             for (let cellIdx of emptyCellIndexes) {
-                board.markCell(cellIdx, cellSymbol);
-                if (board.checkWinCondition(cellIdx, cellSymbol)) {
-                    console.log("1");
-                    board.unmarkCell(cellIdx);
-                    return cellIdx;
+                let index = hasTwoInARow(cellIdx, cellSymbol);
+                if (index != -1) {
+                    return index;
                 }
-                board.unmarkCell(cellIdx);
             }
 
-            // can be null when the computer plays in the first round
-            if (opponentSymbol === null) {
-                opponentSymbol = board.getOpponentSymbol(cellSymbol);          
-            }
-
+            // 2. Block: If the opponent has two in a row, the player must play the third themselves to block the opponent.
             if (opponentSymbol !== null) {
-                // 2. Block: If the opponent has two in a row, the player must play the third themselves to block the opponent.
-                // row
-                let count = 0;
-                let lastEmptyIdx = -1;
-                for (let r = 0; r < 3; r++) {
-                    for (let c = 0; c < 3; c++) {
-                        if (cells[r][c] == opponentSymbol) {
-                            count++;
-                        } else if (cells[r][c] == " ") {
-                            lastEmptyIdx = r*3 + c;
-                        }
-                    }
-                    if (count == 2 && lastEmptyIdx != -1) {
-                        console.log("2r");
-                        return lastEmptyIdx;    
-                    }
-                    count = 0;
-                    lastEmptyIdx = -1;
-                }
-
-                // column
-                for (let c = 0; c < 3; c++) {
-                    for (let r = 0; r < 3; r++) {
-                        if (cells[r][c] == opponentSymbol) {
-                            count++;
-                        } else if (cells[r][c] == " ") {
-                            lastEmptyIdx = r*3 + c;
-                        }
-                    }
-                    if (count == 2 && lastEmptyIdx != -1) {
-                        console.log("2c");
-                        return lastEmptyIdx;    
-                    }
-                    count = 0;
-                    lastEmptyIdx = -1;
-                }
-
-                // diagonal left
-                for (let r = 0, c = 0; r < 3, c < 3; r++, c++) { 
-                    if (cells[r][c] == opponentSymbol) {
-                        count++;
-                    } else if (cells[r][c] == " ") {
-                        lastEmptyIdx = r*3 + c;
+                for (let cellIdx of emptyCellIndexes) {
+                    let index = hasTwoInARow(cellIdx, opponentSymbol);
+                    if (index != -1) {
+                        return index;
                     }
                 }
-                if (count == 2 && lastEmptyIdx != -1) {
-                    console.log("2dl");
-                    return lastEmptyIdx;    
-                }
-                count = 0;
-                lastEmptyIdx = -1;
-
-                // diagonal right
-                for (let r = 0, c = 2; r < 3, c >= 0; r++, c--) { 
-                    if (cells[r][c] == opponentSymbol) {
-                        count++;
-                    } else if (cells[r][c] == " ") {
-                        lastEmptyIdx = r*3 + c;
-                    }
-                }
-                if (count == 2 && lastEmptyIdx != -1) {
-                    console.log("2dr");
-                    return lastEmptyIdx;    
-                }
-                count = 0;
-                lastEmptyIdx = -1;
             }
 
             // 3. Fork: Cause a scenario where the player has two ways to win (two non-blocked lines of 2).
             for (let cellIdx of emptyCellIndexes) {
-                // row
-                let cellRow = Math.floor(cellIdx / 3);
-                let cellColumn = cellIdx % 3;
-                let countMatches = 0;
-                let countEmpty = 0;
-                let countOwn = 0;
-                for (let c = 0; c < 3; c++) {
-                    if (cells[cellRow][c] == cellSymbol) {
-                        countOwn++;
-                    } else if (cells[cellRow][c] == " ") {
-                        countEmpty++;
-                    }
-                }
-                if (countEmpty == 2 && countOwn == 1) {
-                    console.log("3r+", cellIdx);
-                    countMatches++;
-                }
-                countOwn = 0;
-                countEmpty = 0;
-
-                // column
-                for (let r = 0; r < 3; r++) {
-                    if (cells[r][cellColumn] == cellSymbol) {
-                        countOwn++;
-                    } else if (cells[r][cellColumn] == " ") {
-                        countEmpty++;
-                    }
-                }
-                if (countEmpty == 2 && countOwn == 1) {
-                    console.log("3c+", cellIdx);
-                    countMatches++;
-                }
-                countOwn = 0;
-                countEmpty = 0;
-
-                // diagonal left
-                if (cellRow == cellColumn) {
-                    for (let r = 0, c = 0; r < 3, c < 3; r++, c++) { 
-                        if (cells[r][c] == cellSymbol) {
-                            countOwn++;
-                        } else if (cells[r][c] == " ") {
-                            countEmpty++;
-                        }
-                    }
-                    if (countEmpty == 2 && countOwn == 1) {
-                        console.log("3dl+", cellIdx);
-                        countMatches++;
-                    }
-                    countOwn = 0;
-                    countEmpty = 0;
-                }
-
-                // diagonal right
-                if (Math.abs(cellRow - cellColumn) || cellRow == cellColumn) {
-                    for (let r = 0, c = 2; r < 3, c >= 0; r++, c--) { 
-                        if (cells[r][c] == cellSymbol) {
-                            countOwn++;
-                        } else if (cells[r][c] == " ") {
-                            countEmpty++;
-                        }
-                    }
-                    if (countEmpty == 2 && countOwn == 1) {
-                        console.log("3dr+", cellIdx);
-                        countMatches++;
-                    }
-                    countOwn = 0;
-                    countEmpty = 0;
-                }
-                
-                if (countMatches >= 2) {
-                    console.log("3 count", countMatches, cellIdx);
+                if (findFork(cellIdx, cellSymbol)) {
                     return cellIdx;
+                };
+            }
+
+            // 4.1. Blocking an opponent's fork: If there is only one possible fork for the opponent, the player should block it. 
+            if (opponentSymbol !== null) {
+                let forkCount = 0;
+                let blockIdx = -1;
+                for (let cellIdx of emptyCellIndexes) {
+                    if (findFork(cellIdx, opponentSymbol)) {
+                        forkCount++;
+                        blockIdx = cellIdx;
+                    };
+                }
+                console.log({forkCount});
+
+                if (forkCount == 1) {
+                    return blockIdx;
                 }
             }
 
-            // 4. Blocking an opponent's fork: If there is only one possible fork for the opponent, the player should block it. 
-            // Otherwise, the player should block all forks in any way that simultaneously allows them to make two in a row. 
+            // 4.2. Otherwise, the player should block all forks in any way that simultaneously allows them to make two in a row. 
+
+
             // Otherwise, the player should make a two in a row to force the opponent into defending, as long as it does not result in them producing a fork.
 
             console.log("4");
             return emptyCellIndexes[0];
 
         })();
+
         
         board.markCell(determinedCellIndex, cellSymbol);
         console.log(`The computer marked the cell with index ${determinedCellIndex}`);
