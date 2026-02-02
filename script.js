@@ -135,7 +135,7 @@ const game = (function(renderer, board) {
         if (didWin) {
             console.log(`Player #${turn} wins!`);
         } else {
-            console.log("It's a tie!");
+            console.log("It's a draw!");
         }
     }
     
@@ -152,10 +152,16 @@ const game = (function(renderer, board) {
     }
 })(consoleRenderer, consoleBoard);
 
-function consolePlayer(pType, board, cellSymbol) {
+function player(cellSymbol) {
     const getSymbol = () => cellSymbol;
 
-    const humanPlay = () => {
+    return { getSymbol };
+}
+
+function humanPlayer(board, cellSymbol) {
+    let thisPlayer = player(cellSymbol);
+
+    const play = () => {
         let cellIdx;
         while (true) {
             cellIdx = prompt("What cell to mark? Type in index, from 0 to 8.");
@@ -175,10 +181,110 @@ function consolePlayer(pType, board, cellSymbol) {
 
         board.markCell(cellIdx, cellSymbol);
         return cellIdx;
-    }
+    };
+
+
+    return Object.assign({}, thisPlayer, { play });
+}
+
+function computerPlayer(board, cellSymbol) {
+    let thisPlayer = player(cellSymbol);
+
+    const hasTwoInARow = (cellIdx, cellSymbol) => {
+        board.markCell(cellIdx, cellSymbol);
+        if (board.checkWinCondition(cellIdx, cellSymbol)) {
+            board.unmarkCell(cellIdx);
+            return cellIdx;
+        }
+        board.unmarkCell(cellIdx);
+        return -1;
+    };
+
+    const findEmptyAndOwn = (cells, cellIdx, cellSymbol, targetEmpty, targetOwn) => {
+        let log = "";
+
+        // row
+        let cellRow = Math.floor(cellIdx / 3);
+        let cellColumn = cellIdx % 3;
+        let countMatches = 0;
+        let countEmpty = 0;
+        let countOwn = 0;
+        for (let c = 0; c < 3; c++) {
+            if (cells[cellRow][c] == cellSymbol) {
+                countOwn++;
+            } else if (cells[cellRow][c] == " ") {
+                countEmpty++;
+            }
+        }
+        if (countEmpty == targetEmpty && countOwn == targetOwn) {
+            log += "r ";
+            countMatches++;
+        }
+        countOwn = 0;
+        countEmpty = 0;
+
+        // column
+        for (let r = 0; r < 3; r++) {
+            if (cells[r][cellColumn] == cellSymbol) {
+                countOwn++;
+            } else if (cells[r][cellColumn] == " ") {
+                countEmpty++;
+            }
+        }
+        if (countEmpty == targetEmpty && countOwn == targetOwn) {
+            log += "c ";
+            countMatches++;
+        }
+        countOwn = 0;
+        countEmpty = 0;
+
+        // diagonal left
+        if (cellRow == cellColumn) {
+            for (let r = 0, c = 0; r < 3, c < 3; r++, c++) { 
+                if (cells[r][c] == cellSymbol) {
+                    countOwn++;
+                } else if (cells[r][c] == " ") {
+                    countEmpty++;
+                }
+            }
+            if (countEmpty == targetEmpty && countOwn == targetOwn) {
+                log += "dl ";
+                countMatches++;
+            }
+            countOwn = 0;
+            countEmpty = 0;
+        }
+
+        // diagonal right
+        if (Math.abs(cellRow - cellColumn) || cellRow == cellColumn) {
+            for (let r = 0, c = 2; r < 3, c >= 0; r++, c--) { 
+                if (cells[r][c] == cellSymbol) {
+                    countOwn++;
+                } else if (cells[r][c] == " ") {
+                    countEmpty++;
+                }
+            }
+            if (countEmpty == targetEmpty && countOwn == targetOwn) {
+                log += "dr ";
+                countMatches++;
+            }
+            countOwn = 0;
+            countEmpty = 0;
+        }
+
+        return countMatches;
+    };
+
+    const findFork = (cells, cellIdx, cellSymbol) => {
+        board.markCell(cellIdx, cellSymbol);
+        
+        let countMatches = findEmptyAndOwn(cells, cellIdx, cellSymbol, 1, 2);
+        board.unmarkCell(cellIdx);
+        return countMatches >= 2;
+    };
 
     let opponentSymbol = null;
-    const computerPlay = () => {
+    const play = () => {
         let cells = board.getCells();
         let emptyCellIndexes = board.getEmptyCellIndexes();
 
@@ -187,100 +293,14 @@ function consolePlayer(pType, board, cellSymbol) {
             opponentSymbol = board.getOpponentSymbol(cellSymbol);          
         }
 
-        const hasTwoInARow = (cellIdx, cellSymbol) => {
-            board.markCell(cellIdx, cellSymbol);
-            if (board.checkWinCondition(cellIdx, cellSymbol)) {
-                board.unmarkCell(cellIdx);
-                return cellIdx;
-            }
-            board.unmarkCell(cellIdx);
-            return -1;
-        }
+        const determinedCellIndex = (() => {
+            sleep(2000);
 
-        const findFork = (cellIdx, cellSymbol) => {
-            board.markCell(cellIdx, cellSymbol);
-            let log = "";
-
-            // row
-            let cellRow = Math.floor(cellIdx / 3);
-            let cellColumn = cellIdx % 3;
-            let countMatches = 0;
-            let countEmpty = 0;
-            let countOwn = 0;
-            for (let c = 0; c < 3; c++) {
-                if (cells[cellRow][c] == cellSymbol) {
-                    countOwn++;
-                } else if (cells[cellRow][c] == " ") {
-                    countEmpty++;
-                }
-            }
-            if (countEmpty == 1 && countOwn == 2) {
-                countMatches++;
-                log += "r ";
-            }
-            countOwn = 0;
-            countEmpty = 0;
-
-            // column
-            for (let r = 0; r < 3; r++) {
-                if (cells[r][cellColumn] == cellSymbol) {
-                    countOwn++;
-                } else if (cells[r][cellColumn] == " ") {
-                    countEmpty++;
-                }
-            }
-            if (countEmpty == 1 && countOwn == 2) {
-                log += "c ";
-                countMatches++;
-            }
-            countOwn = 0;
-            countEmpty = 0;
-
-            // diagonal left
-            if (cellRow == cellColumn) {
-                for (let r = 0, c = 0; r < 3, c < 3; r++, c++) { 
-                    if (cells[r][c] == cellSymbol) {
-                        countOwn++;
-                    } else if (cells[r][c] == " ") {
-                        countEmpty++;
-                    }
-                }
-                if (countEmpty == 1 && countOwn == 2) {
-                    log += "dl ";
-                    countMatches++;
-                }
-                countOwn = 0;
-                countEmpty = 0;
-            }
-
-            // diagonal right
-            if (Math.abs(cellRow - cellColumn) || cellRow == cellColumn) {
-                for (let r = 0, c = 2; r < 3, c >= 0; r++, c--) { 
-                    if (cells[r][c] == cellSymbol) {
-                        countOwn++;
-                    } else if (cells[r][c] == " ") {
-                        countEmpty++;
-                    }
-                }
-                if (countEmpty == 1 && countOwn == 2) {
-                    log += "dr ";
-                    countMatches++;
-                }
-                countOwn = 0;
-                countEmpty = 0;
-            }
-
-            // console.log({cellIdx, countMatches, log});
-
-            board.unmarkCell(cellIdx);
-            return countMatches >= 2;
-        };
-
-        const determinedCellIndex = (() => {            
             // 1. Win: If the player has two in a row, they can place a third to get three in a row.
             for (let cellIdx of emptyCellIndexes) {
                 let index = hasTwoInARow(cellIdx, cellSymbol);
                 if (index != -1) {
+                    console.log("1");
                     return index;
                 }
             }
@@ -290,61 +310,149 @@ function consolePlayer(pType, board, cellSymbol) {
                 for (let cellIdx of emptyCellIndexes) {
                     let index = hasTwoInARow(cellIdx, opponentSymbol);
                     if (index != -1) {
+                        console.log("2");
                         return index;
                     }
                 }
             }
 
             // 3. Fork: Cause a scenario where the player has two ways to win (two non-blocked lines of 2).
+            let forkableCellIndexes = [];
             for (let cellIdx of emptyCellIndexes) {
-                if (findFork(cellIdx, cellSymbol)) {
-                    return cellIdx;
+                if (findFork(cells, cellIdx, cellSymbol)) {
+                    forkableCellIndexes.push(cellIdx);
                 };
             }
+            if (forkableCellIndexes.length > 0) {
+                console.log("3");
+                return forkableCellIndexes[Math.floor(Math.random() * forkableCellIndexes.length)];
+            }
 
-            // 4.1. Blocking an opponent's fork: If there is only one possible fork for the opponent, the player should block it. 
+            // 4. Reacting to opponent's potential fork
             if (opponentSymbol !== null) {
-                let forkCount = 0;
-                let blockIdx = -1;
+                // 4.1. Blocking an opponent's fork: If there is only one possible fork for the opponent, the player should
+                // block it. 
+                let enemyForkIndexes = [];
                 for (let cellIdx of emptyCellIndexes) {
-                    if (findFork(cellIdx, opponentSymbol)) {
-                        forkCount++;
-                        blockIdx = cellIdx;
+                    if (findFork(cells, cellIdx, opponentSymbol)) {
+                        enemyForkIndexes.push(cellIdx);
                     };
                 }
-                console.log({forkCount});
+                if (enemyForkIndexes.length == 1) {
+                    console.log("4.1");
+                    return enemyForkIndexes[0];
+                }
 
-                if (forkCount == 1) {
-                    return blockIdx;
+                // 4.2. Otherwise, the player should block all forks in any way that simultaneously allows them to make 
+                // two in a row. 
+                if (enemyForkIndexes.length > 1) {
+                    let blockIndexes = [];
+                    for (let cellIdx of enemyForkIndexes) {
+                        let countMatches = findEmptyAndOwn(cells, cellIdx, cellSymbol, 2, 1);
+                        if (countMatches > 0) {
+                            blockIndexes.push(cellIdx);
+                        }
+                    }
+                    if (blockIndexes.length > 0) {
+                        console.log("4.2");
+                        return blockIndexes[Math.floor(Math.random() * blockIndexes.length)];
+                    }
+                }
+
+                // 4.3. Otherwise, the player should make a two in a row to force the opponent into defending, as long as 
+                // it does not result in them producing a fork.
+                if (enemyForkIndexes.length > 1) {
+                    let emptyNonForkIndexes = [];
+                    for (let cellIdx of emptyCellIndexes) {
+                        if (enemyForkIndexes.includes(cellIdx)) {
+                            continue;
+                        }
+    
+                        let countMatches = findEmptyAndOwn(cells, cellIdx, cellSymbol, 2, 1);
+                        if (countMatches > 0) {
+                            emptyNonForkIndexes.push(cellIdx);
+                        }
+                    }
+                    if (emptyNonForkIndexes.length > 0) {
+                        console.log("4.3");
+                        return emptyNonForkIndexes[Math.floor(Math.random() * emptyNonForkIndexes.length)];
+                    }
                 }
             }
 
-            // 4.2. Otherwise, the player should block all forks in any way that simultaneously allows them to make two in a row. 
+            // 5. Center: A player marks the center.
+            if (cells[1][1] == " ") {
+                console.log("5");
+                return 4;
+            }
 
+            // 6. Opposite corner: If the opponent is in the corner, the player plays the opposite corner.
+            let oppositeCornerIndexes = [];
+            if (cells[0][0] == opponentSymbol && cells[2][2] == " ") {
+                oppositeCornerIndexes.push(8);
+            } 
+            if (cells[0][2] == opponentSymbol && cells[2][0] == " ") {
+                oppositeCornerIndexes.push(6);
+            } 
+            if (cells[2][0] == opponentSymbol && cells[0][2] == " ") {
+                oppositeCornerIndexes.push(2);
+            } 
+            if (cells[2][2] == opponentSymbol && cells[0][0] == " ") {
+                oppositeCornerIndexes.push(0);
+            }
+            if (oppositeCornerIndexes.length > 0) {
+                console.log("6");
+                return oppositeCornerIndexes[Math.floor(Math.random() * oppositeCornerIndexes.length)];
+            }
 
-            // Otherwise, the player should make a two in a row to force the opponent into defending, as long as it does not result in them producing a fork.
+            // 7. Empty corner: The player plays in a corner square.
+            let emptyCornerIndexes = [];
+            if (cells[0][0] == " ") {
+                emptyCornerIndexes.push(0);
+            }
+            if (cells[0][2] == " ") {
+                emptyCornerIndexes.push(2);
+            } 
+            if (cells[2][0] == " ") {
+                emptyCornerIndexes.push(6);
+            } 
+            if (cells[2][2] == " ") {
+                emptyCornerIndexes.push(8);
+            } 
+            if (emptyCornerIndexes.length > 0) {
+                console.log("7");
+                return emptyCornerIndexes[Math.floor(Math.random() * emptyCornerIndexes.length)];
+            }
 
-            console.log("4");
-            return emptyCellIndexes[0];
+            // 8. Empty side: The player plays in a middle square on any of the four sides.
+            let emptySideIndexes = [];
+            if (cells[0][1] == " ") {
+                emptySideIndexes.push(1);
+            }
+            if (cells[1][0] == " ") {
+                emptySideIndexes.push(3);
+            } 
+            if (cells[1][2] == " ") {
+                emptySideIndexes.push(5);
+            } 
+            if (cells[2][1] == " ") {
+                emptySideIndexes.push(7);
+            } 
+            if (emptySideIndexes.length > 0) {
+                console.log("8");
+                return emptySideIndexes[Math.floor(Math.random() * emptySideIndexes.length)];
+            }
 
+            throw new Error("You've reached the Unreachable Error - congrats!");
         })();
-
         
         board.markCell(determinedCellIndex, cellSymbol);
         console.log(`The computer marked the cell with index ${determinedCellIndex}`);
         return determinedCellIndex;
-    }
+    };
 
-    if (pType !== playerType.HUMAN && pType !== playerType.COMPUTER) {
-        throw new Error(`Invalid player type ${pType}`);
-    }
 
-    const play = (pType === playerType.HUMAN) ? humanPlay : computerPlay;
-
-    return {
-        getSymbol,
-        play,
-    }
+    return Object.assign({}, thisPlayer, { play });
 }
 
 let playerType = Object.freeze({
@@ -352,6 +460,13 @@ let playerType = Object.freeze({
     COMPUTER: 1, 
 });
 
-let p1 = consolePlayer(playerType.HUMAN, consoleBoard, "x");
-let p2 = consolePlayer(playerType.COMPUTER, consoleBoard, "o");
+function sleep(ms) {
+    let date = new Date();
+    let currDate = null;
+    do { currDate = new Date(); }
+    while (currDate-date < ms);
+}
+
+let p1 = humanPlayer(consoleBoard, "x");
+let p2 = computerPlayer(consoleBoard, "o");
 game.playGame(p1, p2);
