@@ -1,11 +1,81 @@
 "use strict";
 
-const consoleBoard = (function() {
+const htmlRenderer = (function() {  
+    const htmlCells = [];
+
+    let board = document.querySelector(".board");
+    for (let i = 0; i < 9; i++) {
+        htmlCells.push(board.querySelector(`.cell-${i}`));
+    }
+
+    const getHtmlCells = () => htmlCells;
+
+    const getEmptyHtmlCells = (cells) => {
+        let emptyCells = [];
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                if (cells[i][j] == " ") {
+                    emptyCells.push(htmlCells[i*3 + j]);
+                }
+            }
+        }
+        return emptyCells;
+    };
+
+    const render = (cells) => {
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                htmlCells[i*3 + j].textContent = cells[i][j];
+            }
+        }
+    };
+
+    const clear = () => {
+        for (let i = 0; i < 9; i++) {
+            htmlCells[i].textContent = "";
+        }
+    };
+
+    let messageElement;
+    const createBannerDiv = () => {
+        const gameSettingsForm = document.querySelector(".game-settings");
+        document.body.removeChild(gameSettingsForm);
+
+        const newTopElement = document.createElement("div");
+        newTopElement.classList.add("top-element");
+        
+        messageElement = document.createElement("h1");
+        messageElement.textContent = "THE GAME HAS STARTED!";
+        messageElement.classList.add("message");
+
+        
+        const restartButton = document.createElement("button");
+        restartButton.textContent = "RESTART";
+        restartButton.classList.add("start-btn");
+        restartButton.addEventListener("click", () => {
+            location.reload();
+        });
+
+        newTopElement.appendChild(restartButton);
+        newTopElement.appendChild(messageElement);
+        
+        const board = document.querySelector(".board");
+        document.body.insertBefore(newTopElement, board);
+    };
+
+    const editMessage = (newMessage) => {
+        messageElement.textContent = newMessage;
+    };
+
+    return { render, clear, getHtmlCells, getEmptyHtmlCells, createBannerDiv, editMessage };
+})()
+
+const board = (function() {
     const cells = [[" ", " ", " "], [" ", " ", " "], [" ", " ", " "]];
 
     const canMarkCell = (cellIdx) => {
         return cellIdx >= 0 && cellIdx <= 8 && cells[Math.floor(cellIdx / 3)][cellIdx % 3] == " ";
-    }
+    };
 
     const markCell = (cellIdx, cellSymbol) => {
         cells[Math.floor(cellIdx / 3)][cellIdx % 3] = cellSymbol;
@@ -38,7 +108,7 @@ const consoleBoard = (function() {
             }
         }
         return true; 
-    }
+    };
 
     const getOpponentSymbol = (ownSymbol) => {
         for (let r = 0; r < 3; r++) {
@@ -49,7 +119,7 @@ const consoleBoard = (function() {
             }
         }
         return null;
-    }
+    };
 
     const checkWinCondition = (cellIdx, cellSymbol) => {
         let r = Math.floor(cellIdx / 3);
@@ -87,41 +157,28 @@ const consoleBoard = (function() {
         areAllCellsMarked,
         getOpponentSymbol,
         checkWinCondition,
-    }
+    };
 })();
 
-const consoleRenderer = (function() {
-    const render = (cells, roundNum, playerNum) => {
-        let resultingString = `Round ${roundNum}`;
-        resultingString = resultingString.concat(playerNum != -1 ? `, player's #${playerNum} turn` : "");
-        resultingString = resultingString.concat("\n-------------\n");
-        for (let r = 0; r < 3; r++) {
-            resultingString = resultingString.concat("| ")
-            for (let c = 0; c < 3; c++) {
-                resultingString = resultingString.concat(cells[r][c], " | ");
-            }
-            resultingString = resultingString.concat("\n");
-        }
-        resultingString = resultingString.concat("-------------");
+const game = (function(board, renderer) {
+    const startGame = async (settingsData) => {
+        let player1 = getPlayer(settingsData.get("player1"), settingsData.get("difficulty1"), board, renderer, "x");
+        let player2 = getPlayer(settingsData.get("player2"), settingsData.get("difficulty2"), board, renderer, "o");
+        renderer.createBannerDiv();
 
-        console.log(resultingString);
-    }
-
-    return {
-        render,
-    }
-})();
-
-const game = (function(renderer, board) {
-    let roundNum = 1;
-    let turn = Math.floor(Math.random() * 2);  // 0 - p1, 1 - p2; first turn - random
+        await playGame(player1, player2);
+    };
     
-    const playGame = (player1, player2) => {
+    const playGame = async (player1, player2) => {
         let didWin;
-        while (!board.areAllCellsMarked()) {
-            let currentPlayer = turn == 0 ? player1 : player2;
-            didWin = playRound(currentPlayer);
+        let roundNum = 1;
+        let turn = Math.floor(Math.random() * 2);  // 0 - p1, 1 - p2
 
+        while (!board.areAllCellsMarked()) {
+            renderer.editMessage(`Player's ${turn+1} turn!`);
+
+            let currentPlayer = (turn == 0) ? player1 : player2;
+            didWin = await playRound(currentPlayer, roundNum, turn);
             if (didWin) {
                 break;
             }
@@ -130,27 +187,28 @@ const game = (function(renderer, board) {
             roundNum++;
         }
 
-        renderer.render(board.getCells(), String(roundNum).concat(" - END"), -1);
+        renderer.render(board.getCells());
 
         if (didWin) {
-            console.log(`Player #${turn} wins!`);
+            renderer.editMessage(`Player ${turn+1} wins!`);
         } else {
-            console.log("It's a draw!");
+            renderer.editMessage(`It's a draw!`);
         }
-    }
+    };
     
-    const playRound = (player) => {
-        renderer.render(board.getCells(), roundNum, turn);
-        let cellIdx = player.play();
+    const playRound = async (player) => {
+        let cellIdx = await player.play();
+        renderer.render(board.getCells());
 
         let didWin = board.checkWinCondition(cellIdx, player.getSymbol());
         return didWin;
     };
 
     return {
-        playGame,
-    }
-})(consoleRenderer, consoleBoard);
+        startGame,
+    };
+})(board, htmlRenderer);
+
 
 function player(cellSymbol) {
     const getSymbol = () => cellSymbol;
@@ -158,26 +216,34 @@ function player(cellSymbol) {
     return { getSymbol };
 }
 
-function humanPlayer(board, cellSymbol) {
+function getHumanPlayer(board, htmlRenderer, cellSymbol) {
     let thisPlayer = player(cellSymbol);
 
-    const play = () => {
-        let cellIdx;
-        while (true) {
-            cellIdx = prompt("What cell to mark? Type in index, from 0 to 8.");
-            if (cellIdx === null) {
-                throw new Error("You've quit the game. Reload page to restart.");
-            }
+    let cellIdx = -1;
+    const waitForClick = (cells, event) => {
+        const promises = [];
+        
+        for (let cell of cells) {
+            let cellPromise = new Promise((resolve) => {
+                const listener = (e) => {
+                    cellIdx = e.target.className.split("-")[1];
 
-            cellIdx = +cellIdx;
+                    cell.removeEventListener(event, listener);
+                    resolve();
+                }
+                cell.addEventListener(event, listener);
+            });
 
-            let canMarkCell = board.canMarkCell(cellIdx);
-            if (canMarkCell) {
-                break;
-            }
-
-            console.log(`Can't mark the cell with index ${cellIdx}, try again.`);
+            promises.push(cellPromise);
         }
+
+        return Promise.race(promises)
+    };
+
+    const play = async () => {
+        const htmlCells = htmlRenderer.getEmptyHtmlCells(board.getCells());
+
+        await waitForClick(htmlCells, "click");
 
         board.markCell(cellIdx, cellSymbol);
         return cellIdx;
@@ -187,8 +253,26 @@ function humanPlayer(board, cellSymbol) {
     return Object.assign({}, thisPlayer, { play });
 }
 
-function computerPlayer(board, cellSymbol) {
+function getComputerPlayer(board, cellSymbol, difficulty) {
     let thisPlayer = player(cellSymbol);
+
+    let difficultyScore;
+    switch (difficulty) {
+        case "easy":
+            difficultyScore = 20;
+            break;
+        case "medium":
+            difficultyScore = 50;
+            break;
+        case "hard":
+            difficultyScore = 80;
+            break;
+        case "impossible":
+            difficultyScore = 100;
+            break;
+        default:
+            throw new Error("Invalid difficulty: ", difficulty);
+    }
 
     const hasTwoInARow = (cellIdx, cellSymbol) => {
         board.markCell(cellIdx, cellSymbol);
@@ -284,7 +368,7 @@ function computerPlayer(board, cellSymbol) {
     };
 
     let opponentSymbol = null;
-    const play = () => {
+    const play = async () => {
         let cells = board.getCells();
         let emptyCellIndexes = board.getEmptyCellIndexes();
 
@@ -293,14 +377,20 @@ function computerPlayer(board, cellSymbol) {
             opponentSymbol = board.getOpponentSymbol(cellSymbol);          
         }
 
-        const determinedCellIndex = (() => {
-            sleep(2000);
+        const determinedCellIndex = await (async () => {
+            // take time to think
+            await sleepAsync(2000);
+
+            // difficulty check
+            let randomValue = Math.floor(Math.random() * 100);
+            if (randomValue >= difficultyScore) {
+                return emptyCellIndexes[Math.floor(Math.random() * emptyCellIndexes.length)];
+            }
 
             // 1. Win: If the player has two in a row, they can place a third to get three in a row.
             for (let cellIdx of emptyCellIndexes) {
                 let index = hasTwoInARow(cellIdx, cellSymbol);
                 if (index != -1) {
-                    console.log("1");
                     return index;
                 }
             }
@@ -310,7 +400,6 @@ function computerPlayer(board, cellSymbol) {
                 for (let cellIdx of emptyCellIndexes) {
                     let index = hasTwoInARow(cellIdx, opponentSymbol);
                     if (index != -1) {
-                        console.log("2");
                         return index;
                     }
                 }
@@ -324,7 +413,6 @@ function computerPlayer(board, cellSymbol) {
                 };
             }
             if (forkableCellIndexes.length > 0) {
-                console.log("3");
                 return forkableCellIndexes[Math.floor(Math.random() * forkableCellIndexes.length)];
             }
 
@@ -339,7 +427,6 @@ function computerPlayer(board, cellSymbol) {
                     };
                 }
                 if (enemyForkIndexes.length == 1) {
-                    console.log("4.1");
                     return enemyForkIndexes[0];
                 }
 
@@ -354,7 +441,6 @@ function computerPlayer(board, cellSymbol) {
                         }
                     }
                     if (blockIndexes.length > 0) {
-                        console.log("4.2");
                         return blockIndexes[Math.floor(Math.random() * blockIndexes.length)];
                     }
                 }
@@ -374,7 +460,6 @@ function computerPlayer(board, cellSymbol) {
                         }
                     }
                     if (emptyNonForkIndexes.length > 0) {
-                        console.log("4.3");
                         return emptyNonForkIndexes[Math.floor(Math.random() * emptyNonForkIndexes.length)];
                     }
                 }
@@ -382,7 +467,6 @@ function computerPlayer(board, cellSymbol) {
 
             // 5. Center: A player marks the center.
             if (cells[1][1] == " ") {
-                console.log("5");
                 return 4;
             }
 
@@ -401,7 +485,6 @@ function computerPlayer(board, cellSymbol) {
                 oppositeCornerIndexes.push(0);
             }
             if (oppositeCornerIndexes.length > 0) {
-                console.log("6");
                 return oppositeCornerIndexes[Math.floor(Math.random() * oppositeCornerIndexes.length)];
             }
 
@@ -420,7 +503,6 @@ function computerPlayer(board, cellSymbol) {
                 emptyCornerIndexes.push(8);
             } 
             if (emptyCornerIndexes.length > 0) {
-                console.log("7");
                 return emptyCornerIndexes[Math.floor(Math.random() * emptyCornerIndexes.length)];
             }
 
@@ -439,7 +521,6 @@ function computerPlayer(board, cellSymbol) {
                 emptySideIndexes.push(7);
             } 
             if (emptySideIndexes.length > 0) {
-                console.log("8");
                 return emptySideIndexes[Math.floor(Math.random() * emptySideIndexes.length)];
             }
 
@@ -447,7 +528,7 @@ function computerPlayer(board, cellSymbol) {
         })();
         
         board.markCell(determinedCellIndex, cellSymbol);
-        console.log(`The computer marked the cell with index ${determinedCellIndex}`);
+        // console.log(`The computer marked the cell with index ${determinedCellIndex}`);
         return determinedCellIndex;
     };
 
@@ -455,18 +536,36 @@ function computerPlayer(board, cellSymbol) {
     return Object.assign({}, thisPlayer, { play });
 }
 
-let playerType = Object.freeze({
-    HUMAN: 0,
-    COMPUTER: 1, 
+function getPlayer(playerType, playerDifficulty, board, htmlRenderer, cellSymbol) {
+    let player;
+    switch (playerType) {
+        case "human":
+            player = getHumanPlayer(board, htmlRenderer, cellSymbol);
+            break;
+        case "computer":
+            player = getComputerPlayer(board, cellSymbol, playerDifficulty);
+            break;
+        default:
+            throw new Error("Invalid player type: ", playerType);
+    }
+    return player;
+}
+
+let gameSettingsForm = document.querySelector(".game-settings");
+gameSettingsForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    let settingsData = new FormData(gameSettingsForm);
+    game.startGame(settingsData);
 });
 
-function sleep(ms) {
+function sleepSync(ms) {
     let date = new Date();
     let currDate = null;
     do { currDate = new Date(); }
     while (currDate-date < ms);
 }
 
-let p1 = humanPlayer(consoleBoard, "x");
-let p2 = computerPlayer(consoleBoard, "o");
-game.playGame(p1, p2);
+async function sleepAsync(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

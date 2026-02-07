@@ -3,9 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <script src="./script.js" defer></script>
+    <link rel="stylesheet" href="./css/modern-normalize.css">
+    <link rel="stylesheet" href="./css/styles.css">
     <title>Tic Tac Toe</title>
 </head>
 <body>
-    Check console
+    <form class="game-settings top-element">
+        <button class="start-btn">START</button>
+
+        <div class="players">
+            <div class="side1">
+                <h1>PLAYER 1</h1>
+                <div class="player">
+                    <label for="player1-human">
+                        HUMAN
+                        <input type="radio" id="player1-human" name="player1" value="human" checked/>
+                    </label>
+                    <label for="player1-computer">
+                        COMPUTER
+                        <input type="radio" id="player1-computer" name="player1" value="computer" />
+                    </label>
+                </div>
+                <div class="difficulty">
+                    <label for="difficulty1-easy">
+                        EASY
+                        <input type="radio" id="difficulty1-easy" name="difficulty1" value="easy" checked />
+                    </label>
+                    <label for="difficulty1-medium">
+                        MEDIUM
+                        <input type="radio" id="difficulty1-medium" name="difficulty1" value="medium" />
+                    </label>
+                    <label for="difficulty1-hard">
+                        HARD
+                        <input type="radio" id="difficulty1-hard" name="difficulty1" value="hard" />
+                    </label>
+                    <label for="difficulty1-impossible">
+                        IMPOSSIBLE
+                        <input type="radio" id="difficulty1-impossible" name="difficulty1" value="impossible" />
+                    </label>
+                </div>
+            </div>
+
+            <div class="side2">
+                <h1>PLAYER 2</h1>
+                <div class="player">
+                    <label for="player2-human">
+                        HUMAN
+                        <input type="radio" id="player2-human" name="player2" value="human" />
+                    </label>
+                    <label for="player2-computer">
+                        COMPUTER
+                        <input type="radio" id="player2-computer" name="player2" value="computer" checked/>
+                    </label>
+                </div>
+                <div class="difficulty">
+                    <label for="difficulty2-easy">
+                        EASY
+                        <input type="radio" id="difficulty2-easy" name="difficulty2" value="easy" checked />
+                    </label>
+                    <label for="difficulty2-medium">
+                        MEDIUM
+                        <input type="radio" id="difficulty2-medium" name="difficulty2" value="medium" />
+                    </label>
+                    <label for="difficulty2-hard">
+                        HARD
+                        <input type="radio" id="difficulty2-hard" name="difficulty2" value="hard" />
+                    </label>
+                    <label for="difficulty2-impossible">
+                        IMPOSSIBLE
+                        <input type="radio" id="difficulty2-impossible" name="difficulty2" value="impossible" />
+                    </label>
+                </div>
+            </div>    
+        </div>
+    </form>
+
+    <div class="board">
+        <button class="cell-0"></button>
+        <button class="cell-1"></button>
+        <button class="cell-2"></button>
+        <button class="cell-3"></button>
+        <button class="cell-4"></button>
+        <button class="cell-5"></button>
+        <button class="cell-6"></button>
+        <button class="cell-7"></button>
+        <button class="cell-8"></button>
+    </div>
+
 </body>
 </html>
